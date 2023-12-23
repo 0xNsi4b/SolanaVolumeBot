@@ -3,9 +3,9 @@ version: "3.9"
 services:
   telegram-bot:
     container_name: telegram-bot
-    working_dir: /ByBitTelegramBot
+    working_dir: /SolonaVolumeBot
     restart: always
     build:
         context: .
         dockerfile: Dockerfile
-    command: sh -c "python main.py"
+    command: sh -c "python bot.py"
