@@ -68,9 +68,11 @@ def run_swapper(token, key, settings):
     usdt = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'
 
     if settings['usdt']:
-        value_token = swapper(usdt, token, key) * 2
+        amount, num = swapper(usdt, token, key)
+        value_token = amount * num
     else:
-        value_token = swapper(sol, token, key) * 2 * float(get_sol_balance())
+        amount, num = swapper(sol, token, key)
+        value_token = amount * num * float(get_sol_balance())
 
     return value_token
 
@@ -79,9 +81,11 @@ def swapper(token_volume, my_token, key):
     wallet = Keypair.from_bytes(base58.b58decode(key))
     connection = Client("https://api.mainnet-beta.solana.com")
     balance, amount = get_balance(connection, wallet.pubkey(), token_volume)
+    num = 0
 
     if balance > 0:
         swap(connection, wallet, token_volume, my_token, str(balance))
+        num += 1
 
     if token_volume == 'So11111111111111111111111111111111111111112':
         balance = int(connection.get_balance(wallet.pubkey()).value * 0.85)
@@ -90,10 +94,13 @@ def swapper(token_volume, my_token, key):
         balance, amount = get_balance(connection, wallet.pubkey(), token_volume)
 
     swap(connection, wallet, token_volume, my_token, str(balance))
+    num += 1
     time.sleep(random.randint(25, 40))
     balance, a = get_balance(connection, wallet.pubkey(), my_token)
-    swap(connection, wallet, my_token, token_volume, str(balance))
-    return float(amount)
+    if random.randint(0, 1):
+        swap(connection, wallet, my_token, token_volume, str(balance))
+        num += 1
+    return float(amount), num
 
 
 def main():
