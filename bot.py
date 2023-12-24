@@ -82,14 +82,31 @@ async def stop(message: Message):
         await message.answer('Вы не являетесь администратором.')
 
 
+@dp.message(Command('raydium_jupiter'))
+async def stop(message: Message):
+    if message.from_user.id == admin:
+        df = pd.read_csv('settings.csv')
+        if df['raydium'][0]:
+            df['raydium'][0] = False
+            df.to_csv('settings.csv', index=False)
+            await message.answer('Включил прокрут через Jupyter')
+        else:
+            df['raydium'][0] = True
+            df.to_csv('settings.csv', index=False)
+            await message.answer('Включил прокрут через Raydium')
+    else:
+        await message.answer('Вы не являетесь администратором.')
+
+
 @dp.message(Command('info'))
 async def stop(message: Message):
     if message.from_user.id == admin:
         dct = pd.read_csv('settings.csv').to_dict('records')[0]
         value = 'USDT' if dct['usdt'] else 'SOL'
+        dex = 'Raydium' if dct['usdt'] else 'Jupyter'
 
         await message.answer(f'Value usdt: {dct["value"]}\n'
-                             f'Объем крутится через {value}\n'
+                             f'Объем крутится через {dex} в {value}\n'
                              f'Минимальный перерыв между транзами: {dct["sleep_min"]}\n'
                              f'Максимальный перерыв между транзами: {dct["sleep_max"]}\n')
     else:
