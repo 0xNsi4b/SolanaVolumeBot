@@ -11,6 +11,7 @@ from solana.rpc.api import Client
 from solders.keypair import Keypair
 from solders.pubkey import Pubkey
 from solders.transaction import VersionedTransaction
+from raydium import buy, sell
 
 
 def get_sol_balance():
@@ -33,8 +34,10 @@ def read_csv():
 
 def get_balance(connection, owner, token):
     balance_pubkey = connection.get_token_accounts_by_owner(owner, TokenAccountOpts(Pubkey.from_string(token)))
+    if len(balance_pubkey.value) == 0:
+        return 0, 0
     b = connection.get_token_account_balance(balance_pubkey.value[0].pubkey)
-    return b.value.amount, b.value.ui_amount
+    return int(b.value.amount), float(b.value.ui_amount)
 
 
 def read_lst():
@@ -43,7 +46,25 @@ def read_lst():
     return [line.strip() for line in file_list]
 
 
-def swap(connection, wallet, from_token, to_token, amount):
+def raydium_swap(connection, wallet, from_token, to_token, amount):
+    amount = int(amount)
+    if from_token == 'So11111111111111111111111111111111111111112':
+        buy(connection, wallet, to_token, amount)
+    elif from_token == 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB':
+        sell(connection, wallet, from_token, amount)
+        time.sleep(random.randint(25, 40))
+        balance = int(connection.get_balance(wallet.pubkey()).value * 0.85)
+        amount = balance / (10 ** 9)
+        buy(connection, wallet, to_token, amount)
+    else:
+        sell(connection, wallet, from_token, amount)
+        time.sleep(random.randint(25, 40))
+        balance = int(connection.get_balance(wallet.pubkey()).value * 0.85)
+        amount = balance / (10 ** 9)
+        buy(connection, wallet, 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', amount)
+
+
+def jupiter_swap(connection, wallet, from_token, to_token, amount):
 
     transaction_parameters = {
         "quoteResponse": get_quote_response(from_token, to_token, amount),
@@ -68,20 +89,26 @@ def run_swapper(token, key, settings):
     usdt = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'
 
     if settings['usdt']:
-        amount, num = swapper(usdt, token, key)
+        amount, num = swapper(usdt, token, key, settings)
         value_token = amount * num
     else:
-        amount, num = swapper(sol, token, key)
+        amount, num = swapper(sol, token, key, settings)
         value_token = amount * num * float(get_sol_balance())
 
     return value_token
 
 
-def swapper(token_volume, my_token, key):
+def swapper(token_volume, my_token, key, settings):
     wallet = Keypair.from_bytes(base58.b58decode(key))
-    connection = Client("https://api.mainnet-beta.solana.com")
-    balance, amount = get_balance(connection, wallet.pubkey(), token_volume)
+    connection = Client("https://api.mainnet-beta.solana.com", commitment=Commitment("confirmed"),
+                        timeout=30, blockhash_cache=True)
+    balance, amount = get_balance(connection, wallet.pubkey(), my_token)
     num = 0
+
+    if settings['raydium']:
+        swap = raydium_swap
+    else:
+        swap = jupiter_swap
 
     if balance > 0:
         swap(connection, wallet, token_volume, my_token, str(balance))
@@ -106,27 +133,29 @@ def swapper(token_volume, my_token, key):
 
 def main():
     lst = read_lst()
+    print(lst)
     settings = read_csv()
     token = settings['token']
 
     value = float(settings['value'])
     value_done = 0
     while value > value_done:
-        try:
-            if len(lst):
-                key = lst.pop(0)
-                lst.append(key)
-                value_done += run_swapper(token, key, settings)
-                print(value_done)
-                time.sleep(random.randint(settings['sleep_min'], settings['sleep_max']))
-            else:
-                value_done += run_swapper(token, lst[0], settings)
-                print(value_done)
-                time.sleep(random.randint(settings['sleep_min'], settings['sleep_max']))
+        # try:
+        if len(lst) > 1:
+            key = lst.pop(0)
+            lst.append(key)
+            value_done += run_swapper(token, key, settings)
+            print(value_done)
+            time.sleep(random.randint(settings['sleep_min'], settings['sleep_max']))
+        else:
+            value_done += run_swapper(token, lst[0], settings)
+            print(value_done)
+            time.sleep(random.randint(settings['sleep_min'], settings['sleep_max']))
 
-        except Exception as error:
-            print(f'Error {error}')
+        # except Exception as error:
+        #     print(f'Error {error}')
 
 
 if __name__ == '__main__':
     main()
+            

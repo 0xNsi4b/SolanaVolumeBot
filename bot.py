@@ -25,6 +25,7 @@ async def work(message: Message):
                              '/stop_bot - Выключает бота \n'
                              '/info - Показывает текущие настройки бота \n'
                              '/sol_usdt - Переключается между SOL и USDT \n'
+                             '/raydium_jupiter - Переключается между Raydium и Jupiter \n'
                              'token <адрес токена> - Меняет адрес токена \n'
                              'sleep_min <число> - Время минимального перерыва между транзакциями в секундах \n'
                              'sleep_max <число> - Время максимального перерыва между транзакциями в секундах \n'
@@ -103,7 +104,7 @@ async def stop(message: Message):
     if message.from_user.id == admin:
         dct = pd.read_csv('settings.csv').to_dict('records')[0]
         value = 'USDT' if dct['usdt'] else 'SOL'
-        dex = 'Raydium' if dct['usdt'] else 'Jupyter'
+        dex = 'Raydium' if dct['raydium'] else 'Jupyter'
 
         await message.answer(f'Value usdt: {dct["value"]}\n'
                              f'Объем крутится через {dex} в {value}\n'
