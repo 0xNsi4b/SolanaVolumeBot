@@ -100,15 +100,16 @@ def run_swapper(token, key, settings):
 
 def swapper(token_volume, my_token, key, settings):
     wallet = Keypair.from_bytes(base58.b58decode(key))
-    connection = Client("https://api.mainnet-beta.solana.com", commitment=Commitment("confirmed"),
-                        timeout=30, blockhash_cache=True)
+    connection = Client("https://mainnet.helius-rpc.com/?api-key=33f03c8f-affc-40da-8784-8a3d7e8af61b")
     balance, amount = get_balance(connection, wallet.pubkey(), my_token)
     num = 0
 
     if settings['raydium']:
         swap = raydium_swap
+        print('d')
     else:
         swap = jupiter_swap
+        print('s')
 
     if balance > 0:
         swap(connection, wallet, token_volume, my_token, str(balance))
@@ -140,20 +141,19 @@ def main():
     value = float(settings['value'])
     value_done = 0
     while value > value_done:
-        # try:
-        if len(lst) > 1:
-            key = lst.pop(0)
-            lst.append(key)
-            value_done += run_swapper(token, key, settings)
-            print(value_done)
-            time.sleep(random.randint(settings['sleep_min'], settings['sleep_max']))
-        else:
-            value_done += run_swapper(token, lst[0], settings)
-            print(value_done)
-            time.sleep(random.randint(settings['sleep_min'], settings['sleep_max']))
-
-        # except Exception as error:
-        #     print(f'Error {error}')
+        try:
+            if len(lst) > 1:
+                key = lst.pop(0)
+                lst.append(key)
+                value_done += run_swapper(token, key, settings)
+                print(value_done)
+                time.sleep(random.randint(settings['sleep_min'], settings['sleep_max']))
+            else:
+                value_done += run_swapper(token, lst[0], settings)
+                print(value_done)
+                time.sleep(random.randint(settings['sleep_min'], settings['sleep_max']))
+        except Exception as error:
+            print(f'Error {error}')
 
 
 if __name__ == '__main__':

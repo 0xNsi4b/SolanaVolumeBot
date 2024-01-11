@@ -1,10 +1,5 @@
-import json
-
-import base58
 import requests
-from solana.rpc.api import Client
 from solana.rpc.commitment import Commitment
-from solders.keypair import Keypair
 from spl.token.core import _TokenCore
 from spl.token.instructions import create_associated_token_account, get_associated_token_address, CloseAccountParams, \
     close_account
@@ -186,6 +181,7 @@ def buy(conn, wallet, from_token, amount):
     token_program_id = account_program_id.value.owner
 
     pool_keys = fetch_pool_keys(str(mint))
+    print(pool_keys)
     if pool_keys == "failed":
         print(f"a|BUY Pool ERROR {from_token}", f"[Raydium]: Pool Key Not Found")
         return "failed"
