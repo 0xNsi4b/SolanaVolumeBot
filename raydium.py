@@ -1,5 +1,8 @@
+import base58
 import requests
+from solana.rpc.api import Client
 from solana.rpc.commitment import Commitment
+from solders.keypair import Keypair
 from spl.token.core import _TokenCore
 from spl.token.instructions import create_associated_token_account, get_associated_token_address, CloseAccountParams, \
     close_account
@@ -10,6 +13,7 @@ from solana.rpc.types import TokenAccountOpts
 from solders.pubkey import Pubkey
 from construct import Int8ul, Int64ul
 from construct import Struct as cStruct
+import tls_client
 
 
 AMM_PROGRAM_ID = Pubkey.from_string('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8')
@@ -52,41 +56,6 @@ def get_token_account(ctx,
         swap_associated_token_address = get_associated_token_address(owner, mint)
         swap_token_account_instructions = create_associated_token_account(owner, owner, mint)
         return swap_associated_token_address, swap_token_account_instructions
-
-
-def fetch_pool_keys(mint: str) -> dict:
-    amm_info = {}
-    all_pools = {}
-    resp = requests.get('https://api.raydium.io/v2/sdk/liquidity/mainnet.json', stream=True)
-    pools = resp.json()
-    official = pools['official']
-    unofficial = pools['unOfficial']
-    all_pools = official + unofficial
-    try:
-        amm_info = extract_pool_info(all_pools, mint)
-    except:
-        return "failed"
-
-    return {
-        'amm_id': Pubkey.from_string(amm_info['id']),
-        'authority': Pubkey.from_string(amm_info['authority']),
-        'base_mint': Pubkey.from_string(amm_info['baseMint']),
-        'base_decimals': amm_info['baseDecimals'],
-        'quote_mint': Pubkey.from_string(amm_info['quoteMint']),
-        'quote_decimals': amm_info['quoteDecimals'],
-        'lp_mint': Pubkey.from_string(amm_info['lpMint']),
-        'open_orders': Pubkey.from_string(amm_info['openOrders']),
-        'target_orders': Pubkey.from_string(amm_info['targetOrders']),
-        'base_vault': Pubkey.from_string(amm_info['baseVault']),
-        'quote_vault': Pubkey.from_string(amm_info['quoteVault']),
-        'market_id': Pubkey.from_string(amm_info['marketId']),
-        'market_base_vault': Pubkey.from_string(amm_info['marketBaseVault']),
-        'market_quote_vault': Pubkey.from_string(amm_info['marketQuoteVault']),
-        'market_authority': Pubkey.from_string(amm_info['marketAuthority']),
-        'bids': Pubkey.from_string(amm_info['marketBids']),
-        'asks': Pubkey.from_string(amm_info['marketAsks']),
-        'event_queue': Pubkey.from_string(amm_info['marketEventQueue'])
-    }
 
 
 def make_swap_instruction(amount_in: int, token_account_in: Pubkey.from_string, token_account_out: Pubkey.from_string,
@@ -133,7 +102,7 @@ def sell(conn, wallet, token, amount):
     token_program_id = conn.get_account_info_json_parsed(mint).value.owner
 
     # Get Pool Keys
-    pool_keys = fetch_pool_keys(str(mint))
+    pool_keys = get_raydium_data(str(mint))
     if pool_keys == "failed":
         print(f"a|Sell Pool ERROR {token}", f"[Raydium]: Pool Key Not Found")
         return "failed"
@@ -180,7 +149,7 @@ def buy(conn, wallet, from_token, amount):
     account_program_id = conn.get_account_info_json_parsed(mint)
     token_program_id = account_program_id.value.owner
 
-    pool_keys = fetch_pool_keys(str(mint))
+    pool_keys = get_raydium_data(str(mint))
     print(pool_keys)
     if pool_keys == "failed":
         print(f"a|BUY Pool ERROR {from_token}", f"[Raydium]: Pool Key Not Found")
@@ -219,3 +188,33 @@ def buy(conn, wallet, from_token, amount):
     txn = conn.send_transaction(swap_tx, payer, Wsol_account_keyPair)
     print(f"Buy: {Pubkey.from_string(from_token)} Tx: https://solscan.io/tx/{txn.value}")
 
+
+def get_raydium_data(token_address):
+    session = tls_client.Session(
+        client_identifier="chrome112",
+        random_tls_extension_order=True
+    )
+
+    url = f"https://uapi.raydium.io/v2/sdk/liquidity/mint/{token_address}/So11111111111111111111111111111111111111112"
+    response = session.get(url)
+    amm_info = response.json()[0]
+    return {
+        'amm_id': Pubkey.from_string(amm_info['id']),
+        'authority': Pubkey.from_string(amm_info['authority']),
+        'base_mint': Pubkey.from_string(amm_info['baseMint']),
+        'base_decimals': amm_info['baseDecimals'],
+        'quote_mint': Pubkey.from_string(amm_info['quoteMint']),
+        'quote_decimals': amm_info['quoteDecimals'],
+        'lp_mint': Pubkey.from_string(amm_info['lpMint']),
+        'open_orders': Pubkey.from_string(amm_info['openOrders']),
+        'target_orders': Pubkey.from_string(amm_info['targetOrders']),
+        'base_vault': Pubkey.from_string(amm_info['baseVault']),
+        'quote_vault': Pubkey.from_string(amm_info['quoteVault']),
+        'market_id': Pubkey.from_string(amm_info['marketId']),
+        'market_base_vault': Pubkey.from_string(amm_info['marketBaseVault']),
+        'market_quote_vault': Pubkey.from_string(amm_info['marketQuoteVault']),
+        'market_authority': Pubkey.from_string(amm_info['marketAuthority']),
+        'bids': Pubkey.from_string(amm_info['marketBids']),
+        'asks': Pubkey.from_string(amm_info['marketAsks']),
+        'event_queue': Pubkey.from_string(amm_info['marketEventQueue'])
+    }
