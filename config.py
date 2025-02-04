@@ -1,12 +1,12 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import SecretStr
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+PRIVATE_KEY = os.getenv("PRIVATE_KEY")
+RPC = os.getenv("RPC")
+UNIT_BUDGET = 100_000
+UNIT_PRICE = 1_000_000
 
 
-class Settings(BaseSettings):
-    admin: SecretStr
-    telegram_bot_api: SecretStr
-
-    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8')
-
-
-info = Settings()
+if not PRIVATE_KEY or not RPC:
+    raise EnvironmentError("PRIVATE_KEY and RPC environment variables must be set")
